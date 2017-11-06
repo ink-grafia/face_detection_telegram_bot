@@ -9,8 +9,7 @@ class Detector:
         folder = os.path.join(os.path.dirname(__file__)) + '/haarcascades/'
         for filename in os.listdir(folder):
             self.haarcascades.append(folder + filename)
-        self.current_haarcascade = 2  # will be incremented for first
-        self.next_haarcascade()
+        self.default_haarcascade()
         self.vertical_spacing = 1 / 3  # of face height
         self.horizontal_spacing = 1 / 3  # of fave width
 
@@ -37,5 +36,12 @@ class Detector:
             return img
 
     def next_haarcascade(self):
+        if self.current_haarcascade == len(self.haarcascades)-1:
+            self.current_haarcascade=-1
+
         self.current_haarcascade += 1
         self.face_cascade = cv2.CascadeClassifier(self.haarcascades[self.current_haarcascade])
+
+    def default_haarcascade(self):
+        self.current_haarcascade = 2  # will be incremented for first
+        self.next_haarcascade()
