@@ -1,5 +1,6 @@
 from telebot import types
 
+import tempfile
 import config
 import telebot
 import numpy
@@ -44,32 +45,31 @@ def process_photo_message(message):
 
     cv_mat = detector.detect_head(cv_mat)
 
-    # TODO change temp solution: now pic saves in project directory
-    cv2.imwrite(result['file_id'] + '.png', cv_mat)
-    # it was needed for FileIO, because telegram doesn't want to send Image from PIL, binary list or binary numpy array
-    saved_image = open(result['file_id'] + '.png', 'br')
-    keyboard = types.InlineKeyboardMarkup()
-    callback_true = types.InlineKeyboardButton(text="Всё верно", callback_data="true")
-    callback_false = types.InlineKeyboardButton(text="Есть ошибка", callback_data="false")
-    keyboard.add(callback_true)
-    keyboard.add(callback_false)
-    saved_image.seek(0)
-    first = saved_image.read(1)
-    if first:
-        saved_image.seek(0)
-        bot.send_photo(message.chat.id, saved_image, reply_markup=keyboard)
+    tmp_file = tempfile.TemporaryFile("w+b")
+    if tries >= len(detector.haarcascades):
+        tries = 0
+        detector.default_haarcascade()
+        bot.send_message(msg.chat.id, "Лицо не найдено, попробуйте другую фотографию")
+        tmp_file.close()
+    elif cv_mat.any():
+        encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
+        tmp_file.write(encoded_image)
+        keyboard = types.InlineKeyboardMarkup()
+        callback_true = types.InlineKeyboardButton(text="Всё верно", callback_data="true")
+        callback_false = types.InlineKeyboardButton(text="Есть ошибка", callback_data="false")
+        keyboard.add(callback_true)
+        keyboard.add(callback_false)
+        tmp_file.seek(0)
+        bot.send_photo(message.chat.id, tmp_file, reply_markup=keyboard)
+        tmp_file.close()
     else:
-        if tries >= len(detector.haarcascades):
-            tries = 0
-            detector.default_haarcascade()
-            bot.send_message(msg.chat.id, "Лицо не найдено, попробуйте другую фотографию")
-            saved_image.close()
-            os.remove(result['file_id'] + '.png')
-        elif tries < len(detector.haarcascades):
-            detector.next_haarcascade()
-            saved_image.close()
-            os.remove(result['file_id'] + '.png')
-            process_photo_message(message)
+        detector.next_haarcascade()
+        tmp_file.close()
+        process_photo_message(message)
+
+
+
+
 
 
 # В большинстве случаев целесообразно разбить этот хэндлер на несколько маленьких
