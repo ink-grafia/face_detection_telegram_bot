@@ -24,7 +24,7 @@ def repeat_all_text(message):
 def photo(message, is_callback=False):
     cur_user: user = next((usr for usr in users if usr.chat_id == message.chat.id), False)
     if not cur_user:
-        print(str(cur_user.chat_id) + ', first photo processing, adding to list')
+        print(str(message.chat.id) + ', first photo processing, adding to list')
         cur_user = user(message.chat.id)
         users.append(cur_user)
     if is_callback:
@@ -107,6 +107,7 @@ def callback_inline(call):
             print(str(cur_user.chat_id) + ' didn\'t accept our cropping, we will try again or stop')
             if (cur_user.tries+1 >= len(detector.haarcascades)):
                 bot.send_message(chat_id, "К сожалению лицо не было найдено! Может попробуем другую фотографию?")
+                cur_user.tries=0
                 print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
             else:
                 detector.next_haarcascade_for_user(next(usr for usr in users if usr.chat_id == chat_id))
