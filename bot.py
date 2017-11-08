@@ -5,17 +5,15 @@ import config
 import telebot
 import numpy
 import urllib.request
-import os
 from detector import Detector
 import cv2
 import json
+from multiprocessing.pool import ThreadPool
+from user import user
 
 detector = Detector()
 bot = telebot.TeleBot(config.token)
-
-tries = 0
-
-
+users=[]
 @bot.message_handler(content_types=["text"])
 def repeat_all_text(message):
     bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
@@ -23,13 +21,18 @@ def repeat_all_text(message):
 
 @bot.message_handler(content_types=['photo'])
 def photo(message):
-    while not process_photo_message(message):
-        process_photo_message(message)
+    cur_user: user = next((usr for usr in users if usr.chat_id == message.chat.id), False)
+    if not cur_user:
+        cur_user = user(message.chat.id)
+        users.append(cur_user)
+    pool = ThreadPool(processes=1)
+    print('started working on a picture in a new thread')
+    async_result = pool.apply_async(process_photo_message, args=(message,cur_user))
+    while not async_result.get() and cur_user.tries <= len(detector.haarcascades):
+        async_result = pool.apply_async(process_photo_message, args=(message,cur_user))
 
 
-def process_photo_message(message):
-    global tries
-    tries += 1
+def process_photo_message(message, usr):
     file_id_url = 'https://api.telegram.org/bot<bot_token>/getFile?file_id=<the_file_id>'
     result = json.load(urllib.request.urlopen(file_id_url
                                               .replace('<bot_token>',
@@ -42,16 +45,11 @@ def process_photo_message(message):
                           .replace('<token>', config.token)
                           .replace('<file_path>', file_path))
 
-    cv_mat = detector.detect_head(cv_mat)
+    cv_mat = detector.detect_head(cv_mat, usr)
 
     tmp_file = tempfile.TemporaryFile("w+b")
-    if tries >= len(detector.haarcascades):
-        tries = 0
-        detector.default_haarcascade()
-        bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
-        tmp_file.close()
-        return True
-    elif cv_mat.any():
+    if cv_mat is not None:
+        print(str(usr.chat_id) + ', face was found, will send it to user, try #' + str(usr.tries))
         encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
         tmp_file.write(encoded_image)
         keyboard = types.InlineKeyboardMarkup()
@@ -61,12 +59,19 @@ def process_photo_message(message):
         keyboard.add(callback_false)
         tmp_file.seek(0)
         bot.send_photo(message.chat.id, tmp_file, reply_markup=keyboard)
-        tries = 0
-        detector.default_haarcascade()
+        detector.default_haarcascade_for_user(usr)
         tmp_file.close()
         return True
-    else:
-        detector.next_haarcascade()
+    elif usr.tries+1 >= len(detector.haarcascades) or usr.tries+1 >= len(detector.haarcascades) and cv_mat is None:
+        print(str(usr.chat_id) + ' exceeded his tries and face wasn\'t found try #' + str(usr.tries))
+        usr.tries = 0
+        detector.default_haarcascade_for_user(usr)
+        bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
+        tmp_file.close()
+        return True
+    elif cv_mat is None:
+        print(str(usr.chat_id) + ', face wasn\'t found try #' + str(usr.tries))
+        detector.next_haarcascade_for_user(usr)
         tmp_file.close()
         return False
 
@@ -78,15 +83,27 @@ def process_photo_message(message):
 # В большинстве случаев целесообразно разбить этот хэндлер на несколько маленьких
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
+    # call.message.chat.id
+    chat_id = call.message.chat.id
     # Если сообщение из чата с ботом
     if call.message:
+
+        cur_user: user = next((usr for usr in users if usr.chat_id == call.message.chat.id), False)
+        if not cur_user:
+            return
         if call.data == "true":
-            global msg
-            bot.send_message(msg.chat.id, "Хорошо, приятно было с вами работать")
-            msg = None
+            print(str(cur_user.chat_id) + ' accepted our cropping')
+            bot.send_message(chat_id, "Хорошо, приятно было с вами работать")
+            if cur_user:
+                cur_user.tries = 0
         elif call.data == "false":
-            detector.next_haarcascade()
-            process_photo_message(msg)
+            print(str(cur_user.chat_id) + ' didn\'t accept our cropping, we will try again or stop')
+            if (cur_user.tries+1 >= len(detector.haarcascades)):
+                bot.send_message(chat_id, "К сожалению лицо не было найдено! Может попробуем другую фотографию?")
+                print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
+            else:
+                detector.next_haarcascade_for_user(next(usr for usr in users if usr.chat_id == chat_id))
+                photo(call.message)
 
 
 def url_to_image(url):

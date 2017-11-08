@@ -1,6 +1,9 @@
 import numpy as np
 import cv2
 import os
+import threading
+
+from user import user
 
 
 class Detector:
@@ -8,14 +11,19 @@ class Detector:
         self.haarcascades = []
         folder = os.path.join(os.path.dirname(__file__)) + '/haarcascades/'
         for filename in os.listdir(folder):
-            self.haarcascades.append(folder + filename)
-        self.default_haarcascade()
+            self.haarcascades.append(self.get_haarcascade(folder + filename))
+            #self.users['user_token'] = None # user_token for getting his haarcascade
+
         self.vertical_spacing = 1 / 3  # of face height
         self.horizontal_spacing = 1 / 3  # of fave width
 
-    def detect_head(self, img: np.ndarray):
+    def detect_head(self, img: np.ndarray, usr: user):
+        if not usr.haarcascade:
+            self.default_haarcascade_for_user(usr)
+
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
+        faces = usr.haarcascade.detectMultiScale(gray, 1.3, 5) #TODO fix for different users
+
         for (x, y, w, h) in faces:
             old_start = (0, 0)
             old_end = img.shape
@@ -35,13 +43,13 @@ class Detector:
             img = img[new_start[0]:new_end[0], new_start[1]:new_end[1]]
             return img
 
-    def next_haarcascade(self):
-        if self.current_haarcascade == len(self.haarcascades)-1:
-            self.current_haarcascade=-1
+    def get_haarcascade(self, path: str):
+        return cv2.CascadeClassifier(path)
 
-        self.current_haarcascade += 1
-        self.face_cascade = cv2.CascadeClassifier(self.haarcascades[self.current_haarcascade])
+    def next_haarcascade_for_user(self, usr: user):
+        usr.tries+=1
+        usr.haarcascade = self.haarcascades[usr.tries]
+        print('new haarcascade is ' + str(self.haarcascades[usr.tries]))
 
-    def default_haarcascade(self):
-        self.current_haarcascade = 2  # will be incremented for first
-        self.next_haarcascade()
+    def default_haarcascade_for_user(self, usr: user):
+        usr.haarcascade = self.haarcascades[0]
