@@ -35,8 +35,7 @@ def photo(message, is_callback=False):
         pool = ThreadPool(processes=1)
         print(str(cur_user.chat_id) +' started working on a picture in a new thread')
         async_result = pool.apply_async(process_photo_message, args=(message,cur_user))
-        while not async_result.get() and cur_user.tries <= len(detector.haarcascades):
-            pass
+        async_result.get()
 
 
 def process_photo_message(message, usr):
@@ -68,19 +67,17 @@ def process_photo_message(message, usr):
         bot.send_photo(message.chat.id, tmp_file, reply_markup=keyboard)
         detector.default_haarcascade_for_user(usr)
         tmp_file.close()
-        return True
     elif usr.tries+1 >= len(detector.haarcascades) or usr.tries+1 >= len(detector.haarcascades) and cv_mat is None:
         print(str(usr.chat_id) + ' exceeded his tries and face wasn\'t found try #' + str(usr.tries))
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
         bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
         tmp_file.close()
-        return True
     elif cv_mat is None:
         print(str(usr.chat_id) + ', face wasn\'t found try #' + str(usr.tries))
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
-        return False
+        process_photo_message(message, usr)
 
 
 
@@ -111,7 +108,7 @@ def callback_inline(call):
                 print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
             else:
                 detector.next_haarcascade_for_user(next(usr for usr in users if usr.chat_id == chat_id))
-                photo(call.message, True)
+                process_photo_message(call.message, cur_user)
 
 
 def url_to_image(url):
