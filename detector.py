@@ -49,7 +49,6 @@ class Detector:
     def next_haarcascade_for_user(self, usr: user):
         usr.tries+=1
         usr.haarcascade = self.haarcascades[usr.tries]
-        print('new haarcascade is ' + str(self.haarcascades[usr.tries]))
 
     def default_haarcascade_for_user(self, usr: user):
         usr.haarcascade = self.haarcascades[0]

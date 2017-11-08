@@ -16,20 +16,27 @@ bot = telebot.TeleBot(config.token)
 users=[]
 @bot.message_handler(content_types=["text"])
 def repeat_all_text(message):
+    print(str(message.chat.id) + ', got the text, sample response')
     bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
 
 
 @bot.message_handler(content_types=['photo'])
-def photo(message):
+def photo(message, is_callback=False):
     cur_user: user = next((usr for usr in users if usr.chat_id == message.chat.id), False)
     if not cur_user:
+        print(str(cur_user.chat_id) + ', first photo processing, adding to list')
         cur_user = user(message.chat.id)
         users.append(cur_user)
-    pool = ThreadPool(processes=1)
-    print('started working on a picture in a new thread')
-    async_result = pool.apply_async(process_photo_message, args=(message,cur_user))
-    while not async_result.get() and cur_user.tries <= len(detector.haarcascades):
+    if is_callback:
+        print(str(cur_user.chat_id) + 'started working on a picture in current thread')
+        while not process_photo_message(message, cur_user) and cur_user.tries <= len(detector.haarcascades):
+            pass
+    else:
+        pool = ThreadPool(processes=1)
+        print(str(cur_user.chat_id) +' started working on a picture in a new thread')
         async_result = pool.apply_async(process_photo_message, args=(message,cur_user))
+        while not async_result.get() and cur_user.tries <= len(detector.haarcascades):
+            pass
 
 
 def process_photo_message(message, usr):
@@ -103,7 +110,7 @@ def callback_inline(call):
                 print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
             else:
                 detector.next_haarcascade_for_user(next(usr for usr in users if usr.chat_id == chat_id))
-                photo(call.message)
+                photo(call.message, True)
 
 
 def url_to_image(url):
