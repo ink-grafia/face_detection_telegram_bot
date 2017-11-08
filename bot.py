@@ -14,7 +14,6 @@ detector = Detector()
 bot = telebot.TeleBot(config.token)
 
 tries = 0
-msg = None
 
 
 @bot.message_handler(content_types=["text"])
@@ -24,13 +23,13 @@ def repeat_all_text(message):
 
 @bot.message_handler(content_types=['photo'])
 def photo(message):
-    process_photo_message(message)
+    while not process_photo_message(message):
+        process_photo_message(message)
 
 
 def process_photo_message(message):
-    global msg, tries
+    global tries
     tries += 1
-    msg = message
     file_id_url = 'https://api.telegram.org/bot<bot_token>/getFile?file_id=<the_file_id>'
     result = json.load(urllib.request.urlopen(file_id_url
                                               .replace('<bot_token>',
@@ -49,8 +48,9 @@ def process_photo_message(message):
     if tries >= len(detector.haarcascades):
         tries = 0
         detector.default_haarcascade()
-        bot.send_message(msg.chat.id, "Лицо не найдено, попробуйте другую фотографию")
+        bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
         tmp_file.close()
+        return True
     elif cv_mat.any():
         encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
         tmp_file.write(encoded_image)
@@ -61,11 +61,14 @@ def process_photo_message(message):
         keyboard.add(callback_false)
         tmp_file.seek(0)
         bot.send_photo(message.chat.id, tmp_file, reply_markup=keyboard)
+        tries = 0
+        detector.default_haarcascade()
         tmp_file.close()
+        return True
     else:
         detector.next_haarcascade()
         tmp_file.close()
-        process_photo_message(message)
+        return False
 
 
 
