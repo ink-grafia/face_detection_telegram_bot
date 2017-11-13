@@ -10,14 +10,53 @@ import cv2
 import json
 from multiprocessing.pool import ThreadPool
 from user import user
+import logging
+import cherrypy
 
-detector = Detector()
+
+class WebhookServer(object):
+    @cherrypy.expose
+    def index(self):
+        if 'content-length' in cherrypy.request.headers and \
+                        'content-type' in cherrypy.request.headers and \
+                        cherrypy.request.headers['content-type'] == 'application/json':
+            length = int(cherrypy.request.headers['content-length'])
+            json_string = cherrypy.request.body.read(length).decode("utf-8")
+            update = telebot.types.Update.de_json(json_string)
+            # Эта функция обеспечивает проверку входящего сообщения
+            bot.process_new_updates([update])
+            return ''
+        else:
+            raise cherrypy.HTTPError(403)
+
+
+logger = telebot.logger
+telebot.logger.setLevel(logging.INFO)
 bot = telebot.TeleBot(config.token)
-users=[]
-@bot.message_handler(content_types=["text"])
+bot.remove_webhook()
+bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
+                certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
+cherrypy.config.update({
+    'server.socket_host': config.WEBHOOK_LISTEN,
+    'server.socket_port': config.WEBHOOK_PORT,
+    'server.ssl_module': 'builtin',
+    'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
+    'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
+})
+cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
+detector = Detector()
+users = []
+
+
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def echo_message(message):
+    bot.reply_to(message, message.text)
+
+
+'''@bot.message_handler(content_types=["text"])
 def repeat_all_text(message):
-    print(str(message.chat.id) + ', got the text, sample response')
-    bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
+    bot.reply_to(message, 'text')
+    bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")'''
 
 
 @bot.message_handler(content_types=['photo'])
@@ -33,8 +72,8 @@ def photo(message, is_callback=False):
             pass
     else:
         pool = ThreadPool(processes=1)
-        print(str(cur_user.chat_id) +' started working on a picture in a new thread')
-        async_result = pool.apply_async(process_photo_message, args=(message,cur_user))
+        print(str(cur_user.chat_id) + ' started working on a picture in a new thread')
+        async_result = pool.apply_async(process_photo_message, args=(message, cur_user))
         async_result.get()
 
 
@@ -67,7 +106,7 @@ def process_photo_message(message, usr):
         bot.send_photo(message.chat.id, tmp_file, reply_markup=keyboard)
         detector.default_haarcascade_for_user(usr)
         tmp_file.close()
-    elif usr.tries+1 >= len(detector.haarcascades) or usr.tries+1 >= len(detector.haarcascades) and cv_mat is None:
+    elif usr.tries + 1 >= len(detector.haarcascades) or usr.tries + 1 >= len(detector.haarcascades) and cv_mat is None:
         print(str(usr.chat_id) + ' exceeded his tries and face wasn\'t found try #' + str(usr.tries))
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
@@ -78,10 +117,6 @@ def process_photo_message(message, usr):
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
         process_photo_message(message, usr)
-
-
-
-
 
 
 # В большинстве случаев целесообразно разбить этот хэндлер на несколько маленьких
@@ -102,9 +137,9 @@ def callback_inline(call):
                 cur_user.tries = 0
         elif call.data == "false":
             print(str(cur_user.chat_id) + ' didn\'t accept our cropping, we will try again or stop')
-            if (cur_user.tries+1 >= len(detector.haarcascades)):
+            if (cur_user.tries + 1 >= len(detector.haarcascades)):
                 bot.send_message(chat_id, "К сожалению лицо не было найдено! Может попробуем другую фотографию?")
-                cur_user.tries=0
+                cur_user.tries = 0
                 print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
             else:
                 detector.next_haarcascade_for_user(next(usr for usr in users if usr.chat_id == chat_id))
@@ -118,7 +153,6 @@ def url_to_image(url):
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     return image
 
-
 # TODO update by webhooks
-if __name__ == '__main__':
-    bot.polling(none_stop=True)
+# if __name__ == '__main__':
+#    bot.polling(none_stop=True)
