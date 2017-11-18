@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from telebot import types
 
 import tempfile
@@ -14,52 +15,40 @@ import logging
 import cherrypy
 
 
+logger = telebot.logger
+telebot.logger.setLevel(logging.INFO)
+bot = telebot.TeleBot(config.token)
+
+# WebhookServer, process webhook calls
 class WebhookServer(object):
     @cherrypy.expose
     def index(self):
         if 'content-length' in cherrypy.request.headers and \
-                        'content-type' in cherrypy.request.headers and \
-                        cherrypy.request.headers['content-type'] == 'application/json':
+           'content-type' in cherrypy.request.headers and \
+           cherrypy.request.headers['content-type'] == 'application/json':
             length = int(cherrypy.request.headers['content-length'])
             json_string = cherrypy.request.body.read(length).decode("utf-8")
             update = telebot.types.Update.de_json(json_string)
-            # Эта функция обеспечивает проверку входящего сообщения
             bot.process_new_updates([update])
             return ''
         else:
             raise cherrypy.HTTPError(403)
 
 
-logger = telebot.logger
-telebot.logger.setLevel(logging.INFO)
-bot = telebot.TeleBot(config.token)
-bot.remove_webhook()
-bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
-                certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
-cherrypy.config.update({
-    'server.socket_host': config.WEBHOOK_LISTEN,
-    'server.socket_port': config.WEBHOOK_PORT,
-    'server.ssl_module': 'builtin',
-    'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
-    'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
-})
-cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
+
+
+
 detector = Detector()
 users = []
 
 
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def echo_message(message):
-    bot.reply_to(message, message.text)
-
-
-'''@bot.message_handler(content_types=["text"])
+@bot.message_handler(content_types=["text"])
 def repeat_all_text(message):
     bot.reply_to(message, 'text')
-    bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")'''
+    bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
 
 
-@bot.message_handler(content_types=['photo'])
+@bot.message_handler(func=lambda message: True, content_types=['photo'])
 def photo(message, is_callback=False):
     cur_user: user = next((usr for usr in users if usr.chat_id == message.chat.id), False)
     if not cur_user:
@@ -153,6 +142,17 @@ def url_to_image(url):
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     return image
 
-# TODO update by webhooks
-# if __name__ == '__main__':
-#    bot.polling(none_stop=True)
+bot.remove_webhook()
+bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
+                certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
+access_log = cherrypy.log.access_log
+for handler in tuple(access_log.handlers):
+    access_log.removeHandler(handler)
+cherrypy.config.update({
+    'server.socket_host': config.WEBHOOK_LISTEN,
+    'server.socket_port': config.WEBHOOK_PORT,
+    'server.ssl_module': 'builtin',
+    'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
+    'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
+})
+cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
