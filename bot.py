@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#
 from telebot import types
 
 import tempfile
@@ -44,8 +45,8 @@ users = []
 
 @bot.message_handler(content_types=["text"])
 def repeat_all_text(message):
-    bot.reply_to(message, 'text')
-    bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
+    pass
+    #bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
 
 
 @bot.message_handler(func=lambda message: True, content_types=['photo'])

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="telegram_bot">
+    <serverData>
+      <paths name="telegram_bot">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/photo_bot" local="$PROJECT_DIR$" web="/photo_bot" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
