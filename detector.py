@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import os
 
+import config
 from user import user
 
 
@@ -28,17 +29,25 @@ class Detector:
             old_start = (0, 0)
             old_end = img.shape
 
+            #x = x - (h-w/config.ratio)/2
+            h = w/config.ratio
+            #y = y + (w - config.ratio * h)/2
+            #w = w - (w - config.ratio * h)/2
+
             new_x_start = old_start[1] if old_start[1] > x - w * self.horizontal_spacing \
                 else x - w * self.horizontal_spacing
+
             new_y_start = old_start[0] if old_start[0] > y - h * self.vertical_spacing \
                 else y - h * self.vertical_spacing
+
+
             new_start = (int(new_y_start), int(new_x_start))
 
             mb_x = x + w + int(w * self.horizontal_spacing)
             mb_y = y + h + int(h * self.vertical_spacing)
             new_x_end = old_end[1] if old_end[1] < mb_x else mb_x
             new_y_end = old_end[0] if old_end[0] < mb_y else mb_y
-            new_end = (new_y_end, new_x_end)
+            new_end = (int(new_y_end), int(new_x_end))
 
             img = img[new_start[0]:new_end[0], new_start[1]:new_end[1]]
             return img
