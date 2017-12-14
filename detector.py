@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-import cv2
 import os
+
+import cv2
+import numpy as np
 
 import config
 from user import user
@@ -13,7 +14,7 @@ class Detector:
         folder = os.path.join(os.path.dirname(__file__)) + '/haarcascades/'
         for filename in os.listdir(folder):
             self.haarcascades.append(self.get_haarcascade(folder + filename))
-            #self.users['user_token'] = None # user_token for getting his haarcascade
+            # self.users['user_token'] = None # user_token for getting his haarcascade
 
         self.vertical_spacing = 1 / 3  # of face height
         self.horizontal_spacing = 1 / 3  # of fave width
@@ -23,23 +24,22 @@ class Detector:
             self.default_haarcascade_for_user(usr)
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = usr.haarcascade.detectMultiScale(gray, 1.3, 5) #TODO fix for different users
+        faces = usr.haarcascade.detectMultiScale(gray, 1.3, 5)
 
         for (x, y, w, h) in faces:
             old_start = (0, 0)
             old_end = img.shape
 
-            #x = x - (h-w/config.ratio)/2
-            h = w/config.ratio
-            #y = y + (w - config.ratio * h)/2
-            #w = w - (w - config.ratio * h)/2
+            # x = x - (h-w/config.ratio)/2
+            h = w / config.ratio
+            # y = y + (w - config.ratio * h)/2
+            # w = w - (w - config.ratio * h)/2
 
             new_x_start = old_start[1] if old_start[1] > x - w * self.horizontal_spacing \
                 else x - w * self.horizontal_spacing
 
             new_y_start = old_start[0] if old_start[0] > y - h * self.vertical_spacing \
                 else y - h * self.vertical_spacing
-
 
             new_start = (int(new_y_start), int(new_x_start))
 
@@ -56,8 +56,10 @@ class Detector:
         return cv2.CascadeClassifier(path)
 
     def next_haarcascade_for_user(self, usr: user):
-        usr.tries+=1
+        usr.tries += 1
+        # print('changed haarcascade from ' + str(usr.haarcascade) + ' to ', end='')
         usr.haarcascade = self.haarcascades[usr.tries]
+        #print(str(usr.haarcascade))
 
     def default_haarcascade_for_user(self, usr: user):
         usr.haarcascade = self.haarcascades[0]
