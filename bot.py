@@ -1,32 +1,33 @@
 # -*- coding: utf-8 -*-
 #
+import json
+import logging
+import tempfile
+import urllib.request
+from multiprocessing.pool import ThreadPool
+
+import cherrypy
+import cv2
+import numpy
+import telebot
 from telebot import types
 
-import tempfile
 import config
-import telebot
-import numpy
-import urllib.request
 from detector import Detector
-import cv2
-import json
-from multiprocessing.pool import ThreadPool
 from user import user
-import logging
-import cherrypy
-
 
 logger = telebot.logger
 telebot.logger.setLevel(logging.INFO)
 bot = telebot.TeleBot(config.token)
+
 
 # WebhookServer, process webhook calls
 class WebhookServer(object):
     @cherrypy.expose
     def index(self):
         if 'content-length' in cherrypy.request.headers and \
-           'content-type' in cherrypy.request.headers and \
-           cherrypy.request.headers['content-type'] == 'application/json':
+                'content-type' in cherrypy.request.headers and \
+                cherrypy.request.headers['content-type'] == 'application/json':
             length = int(cherrypy.request.headers['content-length'])
             json_string = cherrypy.request.body.read(length).decode("utf-8")
             update = telebot.types.Update.de_json(json_string)
@@ -36,9 +37,6 @@ class WebhookServer(object):
             raise cherrypy.HTTPError(403)
 
 
-
-
-
 detector = Detector()
 users = []
 
@@ -46,7 +44,7 @@ users = []
 @bot.message_handler(content_types=["text"])
 def repeat_all_text(message):
     pass
-    #bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
+    # bot.send_message(message.chat.id, "Пришлите фотографию, исходя из которой нужно сделать фото профиля")
 
 
 @bot.message_handler(func=lambda message: True, content_types=['photo'])
@@ -96,7 +94,7 @@ def process_photo_message(message, usr):
         bot.send_photo(message.chat.id, tmp_file, reply_markup=keyboard)
         detector.default_haarcascade_for_user(usr)
         tmp_file.close()
-    elif usr.tries + 1 >= len(detector.haarcascades) or usr.tries + 1 >= len(detector.haarcascades) and cv_mat is None:
+    elif usr.tries >= len(detector.haarcascades) - 1 or usr.tries >= len(detector.haarcascades) - 1 and cv_mat is None:
         print(str(usr.chat_id) + ' exceeded his tries and face wasn\'t found try #' + str(usr.tries))
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
@@ -122,6 +120,8 @@ def callback_inline(call):
             return
         if call.data == "true":
             print(str(cur_user.chat_id) + ' accepted our cropping')
+            bot.edit_message_reply_markup(chat_id, call.message.message_id)
+            # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
             bot.send_message(chat_id, "Хорошо, приятно было с вами работать")
             if cur_user:
                 cur_user.tries = 0
@@ -129,10 +129,14 @@ def callback_inline(call):
             print(str(cur_user.chat_id) + ' didn\'t accept our cropping, we will try again or stop')
             if (cur_user.tries + 1 >= len(detector.haarcascades)):
                 bot.send_message(chat_id, "К сожалению лицо не было найдено! Может попробуем другую фотографию?")
+                bot.edit_message_reply_markup(chat_id, call.message.message_id)
+
+                #bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
                 cur_user.tries = 0
                 print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
             else:
-                detector.next_haarcascade_for_user(next(usr for usr in users if usr.chat_id == chat_id))
+                res_user = next(usr for usr in users if usr.chat_id == chat_id)
+                detector.next_haarcascade_for_user(res_user)
                 process_photo_message(call.message, cur_user)
 
 
@@ -142,6 +146,7 @@ def url_to_image(url):
     image = numpy.asarray(bytearray(result), dtype="uint8")
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     return image
+
 
 bot.remove_webhook()
 bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
