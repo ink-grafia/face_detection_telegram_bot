@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-#
+# TODO refactor code
 import json
 import logging
+import os
 import tempfile
 import urllib.request
 from multiprocessing.pool import ThreadPool
@@ -66,17 +67,7 @@ def photo(message, is_callback=False):
 
 
 def process_photo_message(message, usr):
-    file_id_url = 'https://api.telegram.org/bot<bot_token>/getFile?file_id=<the_file_id>'
-    result = json.load(urllib.request.urlopen(file_id_url
-                                              .replace('<bot_token>',
-                                                       str(config.token))
-                                              .replace('<the_file_id>',
-                                                       str(message.photo[len(message.photo) - 1].file_id))))['result']
-    file_path = result['file_path']
-    file_path_url = 'https://api.telegram.org/file/bot<token>/<file_path>'
-    cv_mat = url_to_image(file_path_url
-                          .replace('<token>', config.token)
-                          .replace('<file_path>', file_path))
+    cv_mat = url_to_cv2(prepare_url(message))
 
     cv_mat = detector.detect_head(cv_mat, usr)
 
@@ -121,8 +112,16 @@ def callback_inline(call):
         if call.data == "true":
             print(str(cur_user.chat_id) + ' accepted our cropping')
             bot.edit_message_reply_markup(chat_id, call.message.message_id)
+            path = '/root/profile_pics/' + str(call.message.chat.id) + '.png'
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            cv2.imwrite(filename=path,
+                        img=url_to_cv2(prepare_url(call.message)))
             # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
             bot.send_message(chat_id, "Хорошо, приятно было с вами работать")
+            users.remove(cur_user)
             if cur_user:
                 cur_user.tries = 0
         elif call.data == "false":
@@ -131,7 +130,8 @@ def callback_inline(call):
                 bot.send_message(chat_id, "К сожалению лицо не было найдено! Может попробуем другую фотографию?")
                 bot.edit_message_reply_markup(chat_id, call.message.message_id)
 
-                #bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
+                users.remove(cur_user)
+                # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
                 cur_user.tries = 0
                 print(str(cur_user.chat_id) + ' didn\'t accept our cropping and he\'s ran out of tries')
             else:
@@ -140,12 +140,30 @@ def callback_inline(call):
                 process_photo_message(call.message, cur_user)
 
 
-def url_to_image(url):
-    response = urllib.request.urlopen(url)
-    result = response.read()
+def prepare_url(msg):
+    file_id_url = 'https://api.telegram.org/bot<bot_token>/getFile?file_id=<the_file_id>'
+    result = json.load(urllib.request.urlopen(file_id_url
+                                              .replace('<bot_token>',
+                                                       str(config.token))
+                                              .replace('<the_file_id>',
+                                                       str(msg.photo[len(msg.photo) - 1].file_id))))['result']
+    file_path = result['file_path']
+    file_path_url = 'https://api.telegram.org/file/bot<token>/<file_path>'
+    return file_path_url \
+        .replace('<token>', config.token) \
+        .replace('<file_path>', file_path)
+
+
+def url_to_cv2(url):
+    result = url_to_image(url)
     image = numpy.asarray(bytearray(result), dtype="uint8")
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     return image
+
+
+def url_to_image(url):
+    response = urllib.request.urlopen(url)
+    return response.read()
 
 
 bot.remove_webhook()
