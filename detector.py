@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 import config
-from user import user
+import user
 
 
 class Detector:
