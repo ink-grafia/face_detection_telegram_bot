@@ -33,6 +33,7 @@ class WebhookServer(object):
             raise cherrypy.HTTPError(403)
 
 
+
 detector = Detector()
 users = []
 
@@ -99,7 +100,7 @@ def callback_inline(call):
             else:
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)
                 detector.next_haarcascade_for_user(res_user)
-                process_photo_message(call.message, cur_user)
+                process_photo_message(call.message, cur_user, bot, detector)
         bot.edit_message_reply_markup(chat_id, call.message.message_id)
 
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="telegram_bot">
+  <component name="PublishConfigData" serverName="telegram_bot" uploadOnCheckin="fc1c7312-f201-4e26-a511-888bb4cf1cff">
     <serverData>
       <paths name="telegram_bot">
         <serverdata>
@@ -10,5 +10,6 @@
         </serverdata>
       </paths>
     </serverData>
+    <option name="myUploadOnCheckinName" value="telegram_bot" />
   </component>
 </project>
