@@ -1,3 +1,4 @@
+import datetime
 import json
 import tempfile
 import urllib.request
@@ -37,12 +38,16 @@ def url_to_image(url):
 
 def process_photo_message(message, usr, detector, bot):
     cv_mat = url_to_cv2(prepare_url(message))
-
     cv_mat = detector.detect_head(cv_mat, usr)
 
     tmp_file = tempfile.TemporaryFile("w+b")
     if cv_mat is not None:
-        print(str(usr.chat_id) + ', face was found, will send it to user, try #' + str(usr.tries))
+        write_log(datetime.datetime.now().isoformat(),
+                  message.chat.id,
+                  message.chat.first_name,
+                  message.chat.last_name,
+                  message.chat.username,
+                  "face was found, will send it to user, try %d" % usr.tries)
         encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
         tmp_file.write(encoded_image)
         keyboard = types.InlineKeyboardMarkup()
@@ -55,13 +60,31 @@ def process_photo_message(message, usr, detector, bot):
         detector.default_haarcascade_for_user(usr)
         tmp_file.close()
     elif usr.tries >= len(detector.haarcascades) - 1 or usr.tries >= len(detector.haarcascades) - 1 and cv_mat is None:
-        print(str(usr.chat_id) + ' exceeded his tries and face wasn\'t found try #' + str(usr.tries))
+        write_log(datetime.datetime.now().isoformat(),
+                  message.chat.id,
+                  message.chat.first_name,
+                  message.chat.last_name,
+                  message.chat.username,
+                  "exceeded his tries and face wasn\'t found, try %d" % usr.tries)
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
         bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
         tmp_file.close()
     elif cv_mat is None:
-        print(str(usr.chat_id) + ', face wasn\'t found try #' + str(usr.tries))
+        write_log(datetime.datetime.now().isoformat(),
+                  message.chat.id,
+                  message.chat.first_name,
+                  message.chat.last_name,
+                  message.chat.username,
+                  "face wasn\'t found, try %d" % usr.tries)
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
         process_photo_message(message, usr, detector, bot)
+
+
+# <время> <тип_события> <id_беседы <имя> <фамилия> <username> <язык> <сообщение>
+def write_log(time, id, firstname, lastname, username, message):
+    log_message = "%s %d %s %s %s %s\n" % \
+                  (time, id, firstname, lastname, username, message)
+    with open("log.txt", "a") as log:
+        log.write(log_message)
