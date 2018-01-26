@@ -70,19 +70,29 @@ def callback_inline(call):
         cur_user: user = next((usr for usr in users if usr.chat_id == call.message.chat.id), False)
         if not cur_user:
             return
+        path = '/root/profile_pics/'
         if call.data == "true":
             processing.write_log(datetime.datetime.now().isoformat(),
                                  call.message.chat.id,
                                  call.from_user.first_name,
                                  call.from_user.last_name,
                                  call.from_user.username,
-                                 "accepted our cropping")
-            path = '/root/profile_pics/' + str(call.message.chat.id) + '.png'
-            try:
-                os.remove(path)
+                                 "accepted our cropping",
+                                 path + str(call.message.chat.id) + '.png')
+            try:  # TODO do not replace current photo
+                old = [ele for ele in os.listdir(path + "old/")
+                       if ele.startswith(str(call.message.chat.id))]
+                if len(old) == 0:
+                    os.rename(path + str(call.message.chat.id) + '.png',
+                              path + "old/" + str(call.message.chat.id) + "_0" + '.png')
+                else:
+                    last = sorted([ele.replace(str(call.message.chat.id) + "_", "")
+                                  .replace(".png", "") for ele in old])[-1]
+                    os.rename(path + str(call.message.chat.id) + '.png',
+                              path + "old/" + str(call.message.chat.id) + "_" + str(int(last) + 1) + '.png')
             except OSError:
                 pass
-            cv2.imwrite(filename=path,
+            cv2.imwrite(filename=path + str(call.message.chat.id) + '.png',
                         img=url_to_cv2(prepare_url(call.message)))
             # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
             bot.send_message(chat_id, "Хорошо, приятно было с вами работать")
@@ -101,7 +111,8 @@ def callback_inline(call):
                                      call.from_user.first_name,
                                      call.from_user.last_name,
                                      call.from_user.username,
-                                     "didn\'t accept our cropping and he\'s ran out of tries")
+                                     "didn\'t accept our cropping and he\'s ran out of tries",
+                                     path + str(call.message.chat.id) + '.png')
             else:
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)
                 detector.next_haarcascade_for_user(res_user)

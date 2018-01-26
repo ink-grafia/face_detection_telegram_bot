@@ -9,11 +9,18 @@ class ImageResponse(object):
     @cherrypy.expose
     def index(self, id=''):
         if id == '':
-            return '<html>a</html>'
+            return ''
         cherrypy.response.headers['Content-Type'] = "image/png"
         f = io.open('/root/profile_pics/%s.png' % (id), 'rb')
         return cherrypy.lib.file_generator(f)
 
+    @cherrypy.expose
+    def old(self, id=''):
+        if id == '':
+            return ''
+        cherrypy.response.headers['Content-Type'] = "image/png"
+        f = io.open('/root/profile_pics/old/%s.png' % (id), 'rb')
+        return cherrypy.lib.file_generator(f)
 
 cherrypy.config.update({
     'server.socket_host': config.WEBHOOK_HOST,

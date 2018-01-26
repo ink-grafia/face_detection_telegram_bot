@@ -39,7 +39,7 @@ def url_to_image(url):
 def process_photo_message(message, usr, detector, bot):
     cv_mat = url_to_cv2(prepare_url(message))
     cv_mat = detector.detect_head(cv_mat, usr)
-
+    path = '/root/profile_pics/'
     tmp_file = tempfile.TemporaryFile("w+b")
     if cv_mat is not None:
         write_log(datetime.datetime.now().isoformat(),
@@ -47,7 +47,8 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  "face was found, will send it to user, try %d" % usr.tries)
+                  "face was found, will send it to user, try %d" % usr.tries,
+                  path + str(message.chat.id) + '.png')
         encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
         tmp_file.write(encoded_image)
         keyboard = types.InlineKeyboardMarkup()
@@ -65,7 +66,8 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  "exceeded his tries and face wasn\'t found, try %d" % usr.tries)
+                  "exceeded his tries and face wasn\'t found, try %d" % usr.tries,
+                  path + str(message.chat.id) + '.png')
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
         bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
@@ -76,15 +78,16 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  "face wasn\'t found, try %d" % usr.tries)
+                  "face wasn\'t found, try %d" % usr.tries,
+                  path + str(message.chat.id) + '.png')
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
         process_photo_message(message, usr, detector, bot)
 
 
 # <время> <тип_события> <id_беседы <имя> <фамилия> <username> <язык> <сообщение>
-def write_log(time, id, firstname, lastname, username, message):
-    log_message = "%s %d %s %s %s %s\n" % \
-                  (time, id, firstname, lastname, username, message)
+def write_log(time, id, firstname, lastname, username, url, message):  # TODO save url
+    log_message = "%s %d %s %s %s %s %s\n" % \
+                  (time, id, firstname, lastname, username, url, message)
     with open("log.txt", "a") as log:
         log.write(log_message)
