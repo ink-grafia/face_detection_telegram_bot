@@ -62,7 +62,7 @@ def photo(message, is_callback=False):
                 and cur_user.tries <= len(detector.haarcascades):
             pass
     else:
-        process_photo_message(message, cur_user, detector, bot, cv_mat, path + path_delta)
+        process_photo_message(message, cur_user, detector, bot, cv_mat, path_delta)
 
 
 # В большинстве случаев целесообразно разбить этот хэндлер на несколько маленьких
@@ -107,9 +107,13 @@ def callback_inline(call):
                                      '-',
                                      "didn\'t accept our cropping and he\'s ran out of tries")
             else:
+                cv_mat = url_to_cv2(prepare_url(call.message))
+                path = '/root/profile_pics/originals/'
+                path_delta = processing.generate_path(path, call.message.chat.id)
+
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)
                 detector.next_haarcascade_for_user(res_user)
-                process_photo_message(call.message, cur_user, detector, bot)
+                process_photo_message(call.message, cur_user, detector, bot, cv_mat, path_delta)
         bot.edit_message_reply_markup(chat_id, call.message.message_id)
 
 
