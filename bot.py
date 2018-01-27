@@ -48,15 +48,21 @@ def repeat_all_text(message):
 @bot.message_handler(func=lambda message: True, content_types=['photo'])
 def photo(message, is_callback=False):
     cur_user: user = next((usr for usr in users if usr.chat_id == message.chat.id), False)
+
+    cv_mat = url_to_cv2(prepare_url(message))
+    path = '/root/profile_pics/originals/'
+    path_delta = processing.generate_path(path, message.chat.id)
+    cv2.imwrite(filename=path + path_delta,
+                img=cv_mat)
     if not cur_user:
         cur_user = user(message.chat.id)
         users.append(cur_user)
     if is_callback:
-        while not process_photo_message(message, cur_user, detector, bot) and cur_user.tries <= len(
-                detector.haarcascades):
+        while not process_photo_message(message, cur_user, detector, bot, cv_mat, path_delta) \
+                and cur_user.tries <= len(detector.haarcascades):
             pass
     else:
-        process_photo_message(message, cur_user, detector, bot)
+        process_photo_message(message, cur_user, detector, bot, cv_mat, path + path_delta)
 
 
 # В большинстве случаев целесообразно разбить этот хэндлер на несколько маленьких
@@ -98,7 +104,7 @@ def callback_inline(call):
                                      call.from_user.first_name,
                                      call.from_user.last_name,
                                      call.from_user.username,
-                                     '-'
+                                     '-',
                                      "didn\'t accept our cropping and he\'s ran out of tries")
             else:
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)

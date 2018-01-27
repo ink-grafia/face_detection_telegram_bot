@@ -37,12 +37,9 @@ def url_to_image(url):
     return response.read()
 
 
-def process_photo_message(message, usr, detector, bot):
-    cv_mat = url_to_cv2(prepare_url(message))
-    path = '/root/profile_pics/originals/'
-    path_delta = generate_path(path, message.chat.id)
-    cv2.imwrite(filename=path + path_delta,
-                img=cv_mat)
+def process_photo_message(message, usr, detector, bot, original_mat, path_delta):
+    # TODO remove black magic
+    cv_mat = original_mat
     cv_mat = detector.detect_head(cv_mat, usr)
     tmp_file = tempfile.TemporaryFile("w+b")
     if cv_mat is not None:
@@ -86,7 +83,7 @@ def process_photo_message(message, usr, detector, bot):
                   "face wasn\'t found, try %d" % usr.tries)
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
-        process_photo_message(message, usr, detector, bot)
+        process_photo_message(message, usr, detector, bot, original_mat, path_delta)
 
 
 # <время> <тип_события> <id_беседы <имя> <фамилия> <username> <язык> <сообщение>
