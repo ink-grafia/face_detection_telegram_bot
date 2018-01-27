@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-# token = '495979993:AAFwGS24bVM4AYrTLvr9LbMaoLcO8-SIObk'
-token = '467250601:AAF7DpSX8MR0qhWGfopBJ7yn9BsjBUcauO0'
+token = '495979993:AAFwGS24bVM4AYrTLvr9LbMaoLcO8-SIObk'
+#token = '467250601:AAF7DpSX8MR0qhWGfopBJ7yn9BsjBUcauO0'
 
-# WEBHOOK_HOST = '85.17.15.165
 WEBHOOK_HOST = '85.17.15.165'
 WEBHOOK_PORT = 8443  # 443, 80, 88 или 8443 (порт должен быть открыт!)
 IMAGES_PORT = 443
