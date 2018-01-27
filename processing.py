@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import tempfile
 import urllib.request
 
@@ -38,6 +39,10 @@ def url_to_image(url):
 
 def process_photo_message(message, usr, detector, bot):
     cv_mat = url_to_cv2(prepare_url(message))
+    path = '/root/profile_pics/originals/'
+    path_delta = generate_path(path, message.chat.id)
+    cv2.imwrite(filename=path + path_delta,
+                img=cv_mat)
     cv_mat = detector.detect_head(cv_mat, usr)
     tmp_file = tempfile.TemporaryFile("w+b")
     if cv_mat is not None:
@@ -46,7 +51,7 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  '-',
+                  "http://%s:%s/original/?id=%s" % (config.WEBHOOK_HOST, config.IMAGES_PORT, path_delta),
                   "face was found, will send it to user, try %d" % usr.tries)
         encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
         tmp_file.write(encoded_image)
@@ -65,7 +70,7 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  '-',
+                  "http://%s:%s/original/?id=%s" % (config.WEBHOOK_HOST, config.IMAGES_PORT, path_delta),
                   "exceeded his tries and face wasn\'t found, try %d" % usr.tries)
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
@@ -77,7 +82,7 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  '-',
+                  "http://%s:%s/original/?id=%s" % (config.WEBHOOK_HOST, config.IMAGES_PORT, path_delta),
                   "face wasn\'t found, try %d" % usr.tries)
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
@@ -90,3 +95,16 @@ def write_log(time, id, firstname, lastname, username, url, message):  # TODO sa
                   (time, id, firstname, lastname, username, url, message)
     with open("log.txt", "a") as log:
         log.write(log_message)
+
+
+def generate_path(dir, chat_id):
+    chat_id = str(chat_id)
+    old = [ele for ele in os.listdir(dir)
+           if ele.startswith(chat_id)]
+    if len(old) == 0:
+        path_delta = chat_id + "_0" + '.png'
+    else:
+        last = sorted([ele.replace(chat_id + "_", "")
+                      .replace(".png", "") for ele in old])[-1]
+        path_delta = chat_id + "_" + str(int(last) + 1) + '.png'
+    return path_delta

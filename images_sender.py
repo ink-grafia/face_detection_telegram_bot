@@ -15,11 +15,11 @@ class ImageResponse(object):
         return cherrypy.lib.file_generator(f)
 
     @cherrypy.expose
-    def old(self, id=''):
+    def original(self, id=''):
         if id == '':
             return ''
         cherrypy.response.headers['Content-Type'] = "image/png"
-        f = io.open('/root/profile_pics/old/%s.png' % (id), 'rb')
+        f = io.open('/root/profile_pics/originals/%s' % (id), 'rb')
         return cherrypy.lib.file_generator(f)
 
 cherrypy.config.update({

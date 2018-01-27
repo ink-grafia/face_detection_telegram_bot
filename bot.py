@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
 import logging
-import os
 
 import cherrypy
 import cv2
@@ -72,14 +71,7 @@ def callback_inline(call):
             return
         path = '/root/profile_pics/'
         if call.data == "true":
-            old = [ele for ele in os.listdir(path)
-                   if ele.startswith(str(call.message.chat.id))]
-            if len(old) == 0:
-                path_delta = str(call.message.chat.id) + "_0" + '.png'
-            else:
-                last = sorted([ele.replace(str(call.message.chat.id) + "_", "")
-                              .replace(".png", "") for ele in old])[-1]
-                path_delta = str(call.message.chat.id) + "_" + str(int(last) + 1) + '.png'
+            path_delta = processing.generate_path(path, call.message.chat.id)
             cv2.imwrite(filename=path + path_delta,
                         img=url_to_cv2(prepare_url(call.message)))
             # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
