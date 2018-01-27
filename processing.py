@@ -39,7 +39,6 @@ def url_to_image(url):
 def process_photo_message(message, usr, detector, bot):
     cv_mat = url_to_cv2(prepare_url(message))
     cv_mat = detector.detect_head(cv_mat, usr)
-    path = '/root/profile_pics/'
     tmp_file = tempfile.TemporaryFile("w+b")
     if cv_mat is not None:
         write_log(datetime.datetime.now().isoformat(),
@@ -47,8 +46,8 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  "face was found, will send it to user, try %d" % usr.tries,
-                  path + str(message.chat.id) + '.png')
+                  '-',
+                  "face was found, will send it to user, try %d" % usr.tries)
         encoded_image = cv2.imencode(ext='.png', img=cv_mat)[1]
         tmp_file.write(encoded_image)
         keyboard = types.InlineKeyboardMarkup()
@@ -66,8 +65,8 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  "exceeded his tries and face wasn\'t found, try %d" % usr.tries,
-                  path + str(message.chat.id) + '.png')
+                  '-',
+                  "exceeded his tries and face wasn\'t found, try %d" % usr.tries)
         usr.tries = 0
         detector.default_haarcascade_for_user(usr)
         bot.send_message(message.chat.id, "Лицо не найдено, попробуйте другую фотографию")
@@ -78,8 +77,8 @@ def process_photo_message(message, usr, detector, bot):
                   message.chat.first_name,
                   message.chat.last_name,
                   message.chat.username,
-                  "face wasn\'t found, try %d" % usr.tries,
-                  path + str(message.chat.id) + '.png')
+                  '-',
+                  "face wasn\'t found, try %d" % usr.tries)
         detector.next_haarcascade_for_user(usr)
         tmp_file.close()
         process_photo_message(message, usr, detector, bot)

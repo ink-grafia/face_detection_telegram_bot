@@ -72,30 +72,25 @@ def callback_inline(call):
             return
         path = '/root/profile_pics/'
         if call.data == "true":
+            old = [ele for ele in os.listdir(path)
+                   if ele.startswith(str(call.message.chat.id))]
+            if len(old) == 0:
+                path_delta = str(call.message.chat.id) + "_0" + '.png'
+            else:
+                last = sorted([ele.replace(str(call.message.chat.id) + "_", "")
+                              .replace(".png", "") for ele in old])[-1]
+                path_delta = str(call.message.chat.id) + "_" + str(int(last) + 1) + '.png'
+            cv2.imwrite(filename=path + path_delta,
+                        img=url_to_cv2(prepare_url(call.message)))
+            # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
+            bot.send_message(chat_id, "Хорошо, приятно было с вами работать")
             processing.write_log(datetime.datetime.now().isoformat(),
                                  call.message.chat.id,
                                  call.from_user.first_name,
                                  call.from_user.last_name,
                                  call.from_user.username,
-                                 "accepted our cropping",
-                                 path + str(call.message.chat.id) + '.png')
-            try:  # TODO do not replace current photo
-                old = [ele for ele in os.listdir(path + "old/")
-                       if ele.startswith(str(call.message.chat.id))]
-                if len(old) == 0:
-                    os.rename(path + str(call.message.chat.id) + '.png',
-                              path + "old/" + str(call.message.chat.id) + "_0" + '.png')
-                else:
-                    last = sorted([ele.replace(str(call.message.chat.id) + "_", "")
-                                  .replace(".png", "") for ele in old])[-1]
-                    os.rename(path + str(call.message.chat.id) + '.png',
-                              path + "old/" + str(call.message.chat.id) + "_" + str(int(last) + 1) + '.png')
-            except OSError:
-                pass
-            cv2.imwrite(filename=path + str(call.message.chat.id) + '.png',
-                        img=url_to_cv2(prepare_url(call.message)))
-            # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
-            bot.send_message(chat_id, "Хорошо, приятно было с вами работать")
+                                 "http://%s:%s/?id=%s" % (config.WEBHOOK_HOST, config.IMAGES_PORT, path_delta),
+                                 "accepted our cropping")
             users.remove(cur_user)
             if cur_user:
                 cur_user.tries = 0
@@ -111,8 +106,8 @@ def callback_inline(call):
                                      call.from_user.first_name,
                                      call.from_user.last_name,
                                      call.from_user.username,
-                                     "didn\'t accept our cropping and he\'s ran out of tries",
-                                     path + str(call.message.chat.id) + '.png')
+                                     '-'
+                                     "didn\'t accept our cropping and he\'s ran out of tries")
             else:
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)
                 detector.next_haarcascade_for_user(res_user)

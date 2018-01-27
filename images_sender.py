@@ -11,7 +11,7 @@ class ImageResponse(object):
         if id == '':
             return ''
         cherrypy.response.headers['Content-Type'] = "image/png"
-        f = io.open('/root/profile_pics/%s.png' % (id), 'rb')
+        f = io.open('/root/profile_pics/%s' % (id), 'rb')
         return cherrypy.lib.file_generator(f)
 
     @cherrypy.expose
