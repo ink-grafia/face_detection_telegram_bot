@@ -112,7 +112,7 @@ def callback_inline(call):
             else:
                 cv_mat = url_to_cv2(prepare_url(call.message))
                 path = '/root/profile_pics/originals/'
-                path_delta = processing.generate_next_path(path, call.message.chat.id)
+                path_delta = processing.generate_current_path(path, call.message.chat.id)
 
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)
                 detector.next_haarcascade_for_user(res_user)
