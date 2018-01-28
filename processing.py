@@ -94,7 +94,17 @@ def write_log(time, id, firstname, lastname, username, url, message):  # TODO sa
         log.write(log_message)
 
 
-def generate_path(dir, chat_id):
+def generate_current_path(dir, chat_id):
+    chat_id = str(chat_id)
+    old = [ele for ele in os.listdir(dir)
+           if ele.startswith(chat_id)]
+    last = sorted([ele.replace(chat_id + "_", "")
+                  .replace(".png", "") for ele in old])[-1]
+    path_delta = chat_id + "_" + last + '.png'
+    return path_delta
+
+
+def generate_next_path(dir, chat_id):
     chat_id = str(chat_id)
     old = [ele for ele in os.listdir(dir)
            if ele.startswith(chat_id)]

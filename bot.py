@@ -51,7 +51,10 @@ def photo(message, is_callback=False):
 
     cv_mat = url_to_cv2(prepare_url(message))
     path = '/root/profile_pics/originals/'
-    path_delta = processing.generate_path(path, message.chat.id)
+    if is_callback:
+        path_delta = processing.generate_current_path(path, message.chat.id)
+    else:
+        path_delta = processing.generate_next_path(path, message.chat.id)
     cv2.imwrite(filename=path + path_delta,
                 img=cv_mat)
     if not cur_user:
@@ -77,7 +80,7 @@ def callback_inline(call):
             return
         path = '/root/profile_pics/'
         if call.data == "true":
-            path_delta = processing.generate_path(path, call.message.chat.id)
+            path_delta = processing.generate_next_path(path, call.message.chat.id)
             cv2.imwrite(filename=path + path_delta,
                         img=url_to_cv2(prepare_url(call.message)))
             # bot.edit_message_text(text='', chat_id=chat_id, message_id=call.message.message_id)
@@ -109,7 +112,7 @@ def callback_inline(call):
             else:
                 cv_mat = url_to_cv2(prepare_url(call.message))
                 path = '/root/profile_pics/originals/'
-                path_delta = processing.generate_path(path, call.message.chat.id)
+                path_delta = processing.generate_next_path(path, call.message.chat.id)
 
                 res_user = next(usr for usr in users if usr.chat_id == chat_id)
                 detector.next_haarcascade_for_user(res_user)
